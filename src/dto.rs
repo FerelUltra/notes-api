@@ -36,3 +36,79 @@ impl UpdateUserDto {
 		validate_name(&self.name)
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn create_user_dto_validate_should_fail_when_name_is_empty(){
+		let dto = CreateUserDto{
+			name: "".to_string(),
+		};
+
+		let result = dto.validate();
+
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn create_user_dto_validate_should_fail_when_name_is_only_spaces(){
+		let dto = CreateUserDto {
+			name: "     ".to_string(),
+		};
+
+		let result = dto.validate();
+
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn create_user_dto_validate_should_pass_when_name_is_valid(){
+		let dto = CreateUserDto{
+			name: "Ferel".to_string(),
+		};
+
+		let result = dto.validate();
+
+		assert!(result.is_ok());
+	}
+
+	#[test]
+	fn create_user_dto_validate_should_fail_when_name_is_too_long(){
+		let dto = CreateUserDto{
+			name: "a".repeat(101),
+		};
+
+		let result = dto.validate();
+
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn create_user_dto_validate_should_return_bad_request_for_empty_name(){
+		let dto = CreateUserDto{
+			name: "".to_string(),
+		};
+
+		let result = dto.validate();
+
+		match result {
+			Err(AppError::BadRequest(message)) =>{
+				assert_eq!(message, "Name cannot be empty");
+			}
+			_ => panic!("expected AppError::BadRequest") 
+		}
+	}
+
+	#[test]
+	fn update_user_dto_validate_should_pass_when_name_is_valid(){
+		let dto = UpdateUserDto{
+			name: "Alice".to_string(),
+		};
+
+		let result = dto.validate();
+
+		assert!(result.is_ok());
+	}
+}
