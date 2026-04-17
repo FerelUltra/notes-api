@@ -105,17 +105,10 @@ mod tests {
             .await
             .expect("failed to clean users table");
 
-        sqlx::query(
-            r#"
-                create table if not exists users(
-                id serial primary key,
-                name text not null
-            )
-            "#,
-        )
-        .execute(&pool)
-        .await
-        .expect("failed to create users table");
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .expect("failed to run migrations");
 
         pool
     }
