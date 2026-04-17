@@ -1,18 +1,8 @@
-use axum::{routing::get, Router};
 use dotenvy::dotenv;
-use handlers::users::{create_user, delete_user, get_user_by_id, get_users, update_user};
+use notes_api::{create_app, state::AppState};
 use sqlx::postgres::PgPoolOptions;
-use state::AppState;
 use std::net::SocketAddr;
-use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-mod db;
-mod dto;
-mod errors;
-mod handlers;
-mod models;
-mod state;
 
 #[tokio::main]
 async fn main() {
@@ -36,14 +26,7 @@ async fn main() {
 
     let state = AppState { db };
 
-    let app = Router::new()
-        .route("/users", get(get_users).post(create_user))
-        .route(
-            "/users/{id}",
-            get(get_user_by_id).put(update_user).delete(delete_user),
-        )
-        .with_state(state)
-        .layer(TraceLayer::new_for_http());
+    let app = create_app(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
