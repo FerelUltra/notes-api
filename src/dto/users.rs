@@ -1,5 +1,25 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use crate::errors::AppError;
+
+#[derive(Debug, Deserialize)]
+pub struct CreateUserRequest{
+	pub username: String,
+	pub email: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct UpdateUserRequest{
+	pub username: String,
+	pub email: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserResponse {
+	pub id: i64,
+	pub username: String, 
+	pub email: String,
+}
+
 
 #[derive(Debug, Deserialize)]
 pub struct CreateUserDto {

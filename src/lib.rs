@@ -10,6 +10,7 @@ pub mod errors;
 pub mod handlers;
 pub mod models;
 pub mod state;
+pub mod services;
 
 use handlers::users::{create_user, delete_user, get_user_by_id, get_users, update_user,};
 use state::AppState;

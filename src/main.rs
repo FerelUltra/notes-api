@@ -1,5 +1,5 @@
 use dotenvy::dotenv;
-use notes_api::{create_app, state::AppState};
+use notes_api::{create_app, services::users::UserService, state::AppState};
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -24,7 +24,8 @@ async fn main() {
         .await
         .expect("failed to connect to database");
 
-    let state = AppState { db };
+        let user_service = UserService::new(db.clone());
+    let state = AppState { db, user_service };
 
     let app = create_app(state);
 

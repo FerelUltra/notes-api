@@ -1,9 +1,9 @@
 use sqlx::PgPool;
 
 use crate::{
-    dto::{CreateUserDto, UpdateUserDto},
+    dto::users::{CreateUserDto, UpdateUserDto},
     errors::AppError,
-    models::User,
+    models::users::User,
 };
 
 pub async fn get_users(pool: &PgPool) -> Result<Vec<User>, AppError> {

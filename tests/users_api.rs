@@ -3,7 +3,7 @@ use axum::{
 	http::{Request, StatusCode}
 };
 use http_body_util::BodyExt;
-use notes_api::{create_app, state::AppState};
+use notes_api::{create_app, services::users::UserService, state::AppState};
 use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 
@@ -23,7 +23,9 @@ async fn setup_test_app() -> axum::Router {
 		.await
 		.expect("failed to clean users table");
 
-	let state = AppState {db: pool};
+	let user_service = UserService::new(pool.clone());
+
+	let state = AppState {db: pool, user_service};
 
 	create_app(state)
 }
