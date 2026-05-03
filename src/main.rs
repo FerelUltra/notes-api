@@ -29,7 +29,7 @@ async fn main() {
 
     let app = create_app(state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
     tracing::info!("listening on {}", addr);
 
@@ -37,7 +37,7 @@ async fn main() {
         .await
         .expect("failed to bind tcp listener");
 
-    println!("Server running on http://127.0.0.1:3000");
+    println!("Server running on http://0.0.0.0:3000");
 
     axum::serve(listener, app).await.expect("server failed");
 }

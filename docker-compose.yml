@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: .
+    container_name: notes-api-backend
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+    container_name: notes-api-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/20260417093044_create_users.sql:/docker-entrypoint-initdb.d/001_create_users.sql:ro,Z
+
+volumes:
+  postgres_data:
