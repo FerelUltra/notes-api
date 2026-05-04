@@ -17,15 +17,17 @@ async fn main() {
         .init();
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is not set");
-
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL is not set");
     let db = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
         .await
         .expect("failed to connect to database");
 
-        let user_service = UserService::new(db.clone());
-    let state = AppState { db, user_service };
+    let user_service = UserService::new(db.clone());
+    let redis = redis::Client::open(redis_url).expect("failed to create redis client");
+    
+    let state = AppState { db, user_service, redis };
 
     let app = create_app(state);
 

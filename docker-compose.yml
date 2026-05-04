@@ -23,9 +23,17 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations/20260417093044_create_users.sql:/docker-entrypoint-initdb.d/001_create_users.sql:ro,Z
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready - U postgres -d app_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost -p 5432"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7
+    container_name: notes-api-redis
+    ports:
+      - "6379:6379"
+
 volumes:
   postgres_data:
