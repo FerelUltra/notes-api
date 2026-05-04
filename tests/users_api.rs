@@ -25,7 +25,8 @@ async fn setup_test_app() -> axum::Router {
 
 	let user_service = UserService::new(pool.clone());
 
-	let state = AppState {db: pool, user_service};
+	let redis = redis::Client::open("redis://127.0.0.1:6379").expect("failed to create redis client");
+	let state = AppState {db: pool, user_service, redis};
 
 	create_app(state)
 }

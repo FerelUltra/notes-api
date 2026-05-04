@@ -41,5 +41,5 @@ async fn main() {
 
     println!("Server running on http://0.0.0.0:3000");
 
-    axum::serve(listener, app).await.expect("server failed");
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>(),).await.expect("server failed");
 }
