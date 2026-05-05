@@ -26,8 +26,8 @@ async fn main() {
 
     let user_service = UserService::new(db.clone());
     let redis = redis::Client::open(redis_url).expect("failed to create redis client");
-    
-    let state = AppState { db, user_service, redis };
+    let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let state = AppState { db, user_service, redis, jwt_secret };
 
     let app = create_app(state);
 
