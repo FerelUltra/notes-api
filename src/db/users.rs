@@ -35,6 +35,38 @@ pub async fn get_user_by_id(pool: &PgPool, id: i32) -> Result<Option<User>, AppE
     Ok(user)
 }
 
+pub async fn get_user_by_name(
+    pool: &PgPool,
+    name: &str,
+) -> Result<Option<(User, String)>, AppError> {
+    let record = sqlx::query!(
+        r#"
+        SELECT id, name, password_hash
+        FROM users
+        WHERE name = $1
+        "#,
+        name
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    let result = record.map(|r| {
+        let password_hash = r.password_hash.ok_or_else(||{
+            AppError::InternalServerError("User has no password hash".to_string())
+        })?;
+        Ok::<(User, String), AppError>((
+            User {
+                id: r.id,
+                name: r.name,
+            },
+            password_hash,
+        ))
+    })
+    .transpose()?;
+
+    Ok(result)
+}
+
 pub async fn create_user(pool: &PgPool, dto: CreateUserDto) -> Result<User, AppError> {
     let name = dto.name.trim().to_string();
 
@@ -48,6 +80,21 @@ pub async fn create_user(pool: &PgPool, dto: CreateUserDto) -> Result<User, AppE
     .bind(name)
     .fetch_one(pool)
     .await?;
+
+    Ok(user)
+}
+
+pub async fn create_user_with_password(pool: &PgPool, name: String, password_hash: String) -> Result<User, AppError> {
+    let user = sqlx::query_as!(
+        User,
+        r#"
+        INSERT INTO users (name, password_hash)
+        VALUES ($1, $2)
+        RETURNING id, name
+        "#,
+        name,
+        password_hash
+    ).fetch_one(pool).await?;
 
     Ok(user)
 }

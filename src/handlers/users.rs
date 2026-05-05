@@ -1,6 +1,5 @@
 use axum::{
-    extract::{ConnectInfo, Path, State},
-    Json,
+    Json, extract::{ConnectInfo, Path, State}, http::StatusCode
 };
 use redis::AsyncCommands;
 use std::net::SocketAddr;
@@ -10,6 +9,7 @@ use crate::{
     errors::AppError,
     models::users::User,
     state::AppState,
+    dto::RegisterUserDto
 };
 
 const USERS_CACHE_KEY: &str = "users:all";
@@ -74,6 +74,15 @@ async fn check_create_user_rate_limit(
     }
 
     Ok(())
+}
+
+pub async fn register(
+    State(state): State<AppState>,
+    Json(dto): Json<RegisterUserDto>,
+) -> Result<(StatusCode, Json<User>), AppError> {
+    let user = state.user_service.register_user(dto).await?;
+
+    Ok((StatusCode::CREATED, Json(user)))
 }
 
 pub async fn get_users(State(state): State<AppState>) -> Result<Json<Vec<User>>, AppError> {

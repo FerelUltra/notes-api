@@ -2,8 +2,10 @@ FROM rust:1.88
 
 WORKDIR /app
 
-COPY Cargo.toml Cargo.lock ./
+ENV SQLX_OFFLINE=true
 
+COPY Cargo.toml Cargo.lock ./
+COPY .sqlx ./.sqlx
 COPY src ./src
 COPY migrations ./migrations
 
