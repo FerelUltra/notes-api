@@ -14,7 +14,8 @@ pub enum AppError {
     BadRequest(String),
     DbError(String),
     TooManyRequests(String),
-    InternalServerError(String)
+    InternalServerError(String),
+    Unauthorized(String),
 }
 
 #[derive(Serialize)]
@@ -35,7 +36,8 @@ impl IntoResponse for AppError {
             AppError::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
             AppError::DbError(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
             AppError::TooManyRequests(message)=> (StatusCode::TOO_MANY_REQUESTS, message),
-            AppError::InternalServerError(message) => (StatusCode::INTERNAL_SERVER_ERROR, message)
+            AppError::InternalServerError(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
+            AppError::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
         };
 
         let body = Json(ErrorResponse { error: message });

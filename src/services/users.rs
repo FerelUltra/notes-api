@@ -80,14 +80,14 @@ impl UserService {
     ) -> Result<User, AppError> {
         let record = db::users::get_user_by_name(&self.pool, &dto.name)
             .await?
-            .ok_or(AppError::BadRequest("Invalid credentials".to_string()))?;
+            .ok_or(AppError::Unauthorized("Invalid credentials".to_string()))?;
 
         let (user, password_hash) = record;
 
         let valid = verify_password(&dto.password, &password_hash)?;
 
         if !valid{
-            return Err(AppError::BadRequest("Invalid credentials".to_string()));
+            return Err(AppError::Unauthorized("Invalid credentials".to_string()));
         }
 
         Ok(user)
