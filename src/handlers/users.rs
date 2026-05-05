@@ -5,11 +5,7 @@ use redis::AsyncCommands;
 use std::net::SocketAddr;
 
 use crate::{
-    dto::users::{CreateUserDto, UpdateUserDto},
-    errors::AppError,
-    models::users::User,
-    state::AppState,
-    dto::RegisterUserDto
+    auth::extractor::AuthUser, dto::{RegisterUserDto, users::{CreateUserDto, UpdateUserDto}}, errors::AppError, models::users::User, state::AppState
 };
 
 const USERS_CACHE_KEY: &str = "users:all";
@@ -85,7 +81,7 @@ pub async fn register(
     Ok((StatusCode::CREATED, Json(user)))
 }
 
-pub async fn get_users(State(state): State<AppState>) -> Result<Json<Vec<User>>, AppError> {
+pub async fn get_users(AuthUser {user_id: _}: AuthUser, State(state): State<AppState>,  ) -> Result<Json<Vec<User>>, AppError> {
     let redis_connection = state.redis.get_multiplexed_async_connection().await;
 
     if let Ok(mut conn) = redis_connection {

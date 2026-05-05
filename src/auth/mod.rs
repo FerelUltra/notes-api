@@ -7,6 +7,7 @@ use argon2::{
     },
     Argon2,
 };
+pub mod extractor;
 
 use crate::errors::AppError;
 

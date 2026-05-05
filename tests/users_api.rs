@@ -26,7 +26,9 @@ async fn setup_test_app() -> axum::Router {
 	let user_service = UserService::new(pool.clone());
 
 	let redis = redis::Client::open("redis://127.0.0.1:6379").expect("failed to create redis client");
-	let state = AppState {db: pool, user_service, redis};
+
+	let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+	let state = AppState {db: pool, user_service, redis, jwt_secret};
 
 	create_app(state)
 }
