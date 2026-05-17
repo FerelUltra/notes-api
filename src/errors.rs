@@ -17,6 +17,7 @@ pub enum AppError {
     InternalServerError(String),
     Unauthorized(String),
     Forbidden(String),
+    Conflict(String)
 }
 
 #[derive(Serialize)]
@@ -40,6 +41,7 @@ impl IntoResponse for AppError {
             AppError::InternalServerError(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
             AppError::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
             AppError::Forbidden(message) => (StatusCode::FORBIDDEN, message),
+            AppError::Conflict(message) => (StatusCode::CONFLICT, message)
         };
 
         let body = Json(ErrorResponse { error: message });

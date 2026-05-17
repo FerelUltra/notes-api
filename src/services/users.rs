@@ -20,12 +20,11 @@ impl UserService {
 
     pub async fn register_user(&self, dto: RegisterUserDto) -> Result<User, AppError> {
         // 1. validate (can be reused later)
-        if dto.name.trim().is_empty() {
-            return Err(AppError::BadRequest("Name cannot be empty".into()));
-        }
+        
+        let existing_user = db::users::get_user_by_email(&self.pool, &dto.email).await?;
 
-        if dto.password.len() < 6 {
-            return Err(AppError::BadRequest("Password too short".into()));
+        if existing_user.is_some() {
+            return Err(AppError::Conflict("Email already exists".to_string()))
         }
 
         // 2. hash password
