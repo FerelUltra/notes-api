@@ -63,6 +63,8 @@ pub async fn register(
 
     check_register_rate_limit(&state, &client_ip).await?;
 
+    dto.validate()?;
+
     let user = state.user_service.register_user(dto).await?;
     let access_token = generate_access_token(user.id, &state.jwt_secret)?;
 
@@ -79,6 +81,7 @@ pub async fn login(
     State(state): State<AppState>,
     Json(dto): Json<LoginUserDto>,
 ) -> Result<Json<AuthResponseDto>, AppError> {
+    dto.validate()?;
     let user = state.user_service.login_user(dto).await?;
 
     let access_token = generate_access_token(user.id, &state.jwt_secret)?;
