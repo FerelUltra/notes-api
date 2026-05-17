@@ -5,6 +5,7 @@ use axum::{
 };
 use http_body_util::BodyExt;
 use notes_api::{create_app, services::users::UserService, state::AppState};
+use redis::AsyncCommands;
 use serde_json::Value;
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
@@ -23,7 +24,7 @@ async fn setup_test_app() -> Option<axum::Router> {
         .await
         .expect("failed to connect to test database");
 
-    sqlx::query("TRUNCATE TABLE users RESTART IDENTITY")
+    sqlx::query("TRUNCATE TABLE notes, users RESTART IDENTITY CASCADE")
         .execute(&pool)
         .await
         .expect("failed to clean users table");
@@ -32,6 +33,12 @@ async fn setup_test_app() -> Option<axum::Router> {
 
     let redis =
         redis::Client::open("redis://127.0.0.1:6379").expect("failed to create redis client");
+
+    if let Ok(mut conn) = redis.get_multiplexed_async_connection().await {
+        let _: redis::RedisResult<()> = conn
+            .del(&["rate_limit:register:127.0.0.1", "users:all"])
+            .await;
+    }
 
     let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     let state = AppState {

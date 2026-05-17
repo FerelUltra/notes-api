@@ -27,7 +27,12 @@ async fn main() {
     let user_service = UserService::new(db.clone());
     let redis = redis::Client::open(redis_url).expect("failed to create redis client");
     let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    let state = AppState { db, user_service, redis, jwt_secret };
+    let state = AppState {
+        db,
+        user_service,
+        redis,
+        jwt_secret,
+    };
 
     let app = create_app(state);
 
@@ -41,5 +46,10 @@ async fn main() {
 
     println!("Server running on http://0.0.0.0:3000");
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>(),).await.expect("server failed");
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .expect("server failed");
 }

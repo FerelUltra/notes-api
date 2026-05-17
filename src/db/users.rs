@@ -171,7 +171,7 @@ mod tests {
     }
 
     async fn clean_users_table(pool: &PgPool) {
-        sqlx::query("truncate table users restart identity")
+        sqlx::query("truncate table notes, users restart identity cascade")
             .execute(pool)
             .await
             .expect("failed to clean users table");

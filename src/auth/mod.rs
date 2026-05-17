@@ -1,10 +1,5 @@
 use argon2::{
-    password_hash::{
-        SaltString, rand_core::OsRng,
-        PasswordHash,
-        PasswordHasher,
-        PasswordVerifier
-    },
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
 pub mod extractor;
