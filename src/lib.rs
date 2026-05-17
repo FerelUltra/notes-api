@@ -16,6 +16,7 @@ pub mod state;
 
 use handlers::{
     auth::{login, register},
+    health::health,
     notes::{create_note, delete_note, get_note_by_id, get_notes, update_note},
     users::{delete_user, get_user_by_id, get_users, update_user},
 };
@@ -24,6 +25,7 @@ use state::AppState;
 
 pub fn create_app(state: AppState) -> Router {
     Router::new()
+        .route("/health", get(health))
         .route("/users", get(get_users))
         .route(
             "/users/{id}",
