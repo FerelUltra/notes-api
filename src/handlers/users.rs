@@ -70,6 +70,7 @@ pub async fn get_users(
 }
 
 pub async fn get_user_by_id(
+    AuthUser { user_id: _ }: AuthUser,
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<User>, AppError> {
@@ -79,10 +80,17 @@ pub async fn get_user_by_id(
 }
 
 pub async fn update_user(
+    AuthUser { user_id }: AuthUser,
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(dto): Json<UpdateUserDto>,
 ) -> Result<Json<User>, AppError> {
+    if user_id != id {
+        return Err(AppError::Forbidden(
+            "You can only update your own user".to_string(),
+        ));
+    }
+
     dto.validate()?;
 
     let user = state.user_service.update_user(id, dto).await?;
@@ -93,9 +101,16 @@ pub async fn update_user(
 }
 
 pub async fn delete_user(
+    AuthUser { user_id }: AuthUser,
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<String>, AppError> {
+    if user_id != id {
+        return Err(AppError::Forbidden(
+            "You can only delete your own user".to_string(),
+        ));
+    }
+
     let deleted = state.user_service.delete_user(id).await?;
 
     if deleted {

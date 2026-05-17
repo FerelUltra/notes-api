@@ -157,11 +157,12 @@ async fn get_user_by_id_should_return_200_when_user_exists() {
         return;
     };
 
-    register_user(app.clone(), "Alice", "alice@example.com").await;
+    let token = register_user(app.clone(), "Alice", "alice@example.com").await;
 
     let request = Request::builder()
         .uri("/users/1")
         .method("GET")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::empty())
         .unwrap();
 
@@ -182,9 +183,12 @@ async fn get_user_by_id_should_return_404_when_user_does_not_exist() {
         return;
     };
 
+    let token = register_user(app.clone(), "Alice", "alice@example.com").await;
+
     let request = Request::builder()
         .uri("/users/999")
         .method("GET")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::empty())
         .unwrap();
 
@@ -199,12 +203,13 @@ async fn update_user_should_return_200_and_updated_user() {
         return;
     };
 
-    register_user(app.clone(), "Alice", "alice@example.com").await;
+    let token = register_user(app.clone(), "Alice", "alice@example.com").await;
 
     let updated_request = Request::builder()
         .uri("/users/1")
         .method("PUT")
         .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::from("{\"name\":\"Alice updated\"}"))
         .unwrap();
 
@@ -225,6 +230,7 @@ async fn update_user_should_return_200_and_updated_user() {
     let get_request = Request::builder()
         .uri("/users/1")
         .method("GET")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::empty())
         .unwrap();
 
@@ -238,15 +244,50 @@ async fn update_user_should_return_200_and_updated_user() {
 }
 
 #[tokio::test]
-async fn update_user_should_return_404_when_user_does_not_exist() {
+async fn update_user_should_return_403_when_user_updates_another_user() {
     let Some(app) = setup_test_app().await else {
         return;
     };
 
+    let token = register_user(app.clone(), "Alice", "alice@example.com").await;
+    register_user(app.clone(), "Bob", "bob@example.com").await;
+
     let updated_request = Request::builder()
-        .uri("/users/999")
+        .uri("/users/2")
         .method("PUT")
         .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", token))
+        .body(Body::from("{\"name\":\"Bob updated\"}"))
+        .unwrap();
+
+    let updated_response = app.clone().oneshot(updated_request).await.unwrap();
+
+    assert_eq!(updated_response.status(), StatusCode::FORBIDDEN)
+}
+
+#[tokio::test]
+async fn update_user_should_return_404_when_own_user_no_longer_exists() {
+    let Some(app) = setup_test_app().await else {
+        return;
+    };
+
+    let token = register_user(app.clone(), "Alice", "alice@example.com").await;
+
+    let delete_request = Request::builder()
+        .uri("/users/1")
+        .method("DELETE")
+        .header("authorization", format!("Bearer {}", token))
+        .body(Body::empty())
+        .unwrap();
+
+    let delete_response = app.clone().oneshot(delete_request).await.unwrap();
+    assert_eq!(delete_response.status(), StatusCode::OK);
+
+    let updated_request = Request::builder()
+        .uri("/users/1")
+        .method("PUT")
+        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::from("{\"name\":\"Nobody\"}"))
         .unwrap();
 
@@ -260,12 +301,12 @@ async fn delete_user_should_return_200_and_remove_user() {
     let Some(app) = setup_test_app().await else {
         return;
     };
-    register_user(app.clone(), "Delete me", "delete-me@example.com").await;
+    let token = register_user(app.clone(), "Delete me", "delete-me@example.com").await;
 
     let delete_request = Request::builder()
         .uri("/users/1")
         .method("DELETE")
-        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::empty())
         .unwrap();
 
@@ -276,7 +317,7 @@ async fn delete_user_should_return_200_and_remove_user() {
     let get_request = Request::builder()
         .uri("/users/1")
         .method("GET")
-        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::empty())
         .unwrap();
 
@@ -285,15 +326,48 @@ async fn delete_user_should_return_200_and_remove_user() {
 }
 
 #[tokio::test]
-async fn delete_user_should_return_404_when_user_does_not_exist() {
+async fn delete_user_should_return_403_when_user_deletes_another_user() {
     let Some(app) = setup_test_app().await else {
         return;
     };
 
+    let token = register_user(app.clone(), "Alice", "alice@example.com").await;
+    register_user(app.clone(), "Bob", "bob@example.com").await;
+
     let delete_request = Request::builder()
-        .uri("/users/999")
+        .uri("/users/2")
         .method("DELETE")
-        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", token))
+        .body(Body::empty())
+        .unwrap();
+
+    let delete_response = app.clone().oneshot(delete_request).await.unwrap();
+
+    assert_eq!(delete_response.status(), StatusCode::FORBIDDEN)
+}
+
+#[tokio::test]
+async fn delete_user_should_return_404_when_own_user_no_longer_exists() {
+    let Some(app) = setup_test_app().await else {
+        return;
+    };
+
+    let token = register_user(app.clone(), "Alice", "alice@example.com").await;
+
+    let delete_request = Request::builder()
+        .uri("/users/1")
+        .method("DELETE")
+        .header("authorization", format!("Bearer {}", token))
+        .body(Body::empty())
+        .unwrap();
+
+    let delete_response = app.clone().oneshot(delete_request).await.unwrap();
+    assert_eq!(delete_response.status(), StatusCode::OK);
+
+    let delete_request = Request::builder()
+        .uri("/users/1")
+        .method("DELETE")
+        .header("authorization", format!("Bearer {}", token))
         .body(Body::empty())
         .unwrap();
 

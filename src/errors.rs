@@ -16,6 +16,7 @@ pub enum AppError {
     TooManyRequests(String),
     InternalServerError(String),
     Unauthorized(String),
+    Forbidden(String),
 }
 
 #[derive(Serialize)]
@@ -38,6 +39,7 @@ impl IntoResponse for AppError {
             AppError::TooManyRequests(message) => (StatusCode::TOO_MANY_REQUESTS, message),
             AppError::InternalServerError(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
             AppError::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
+            AppError::Forbidden(message) => (StatusCode::FORBIDDEN, message),
         };
 
         let body = Json(ErrorResponse { error: message });
