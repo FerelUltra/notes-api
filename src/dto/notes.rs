@@ -38,7 +38,6 @@ fn validate_title(title: &str) -> Result<(), AppError> {
 }
 
 fn validate_content(content: &str) -> Result<(), AppError> {
-    
     if content.len() > CONTENT_MAX_SIZE {
         return Err(AppError::BadRequest("Content is too long".to_string()));
     }

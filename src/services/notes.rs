@@ -84,12 +84,14 @@ impl NoteService {
 }
 
 impl From<Note> for NoteResponseDto {
-    fn from(Note{ id, title, content, user_id: _user_id}: Note) -> Self {
-        
-        Self {
-            id: id,
-            title: title,
-            content: content,
-        }
+    fn from(
+        Note {
+            id,
+            title,
+            content,
+            user_id: _user_id,
+        }: Note,
+    ) -> Self {
+        Self { id, title, content }
     }
 }
