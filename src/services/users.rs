@@ -20,11 +20,11 @@ impl UserService {
 
     pub async fn register_user(&self, dto: RegisterUserDto) -> Result<User, AppError> {
         // 1. validate (can be reused later)
-        
+
         let existing_user = db::users::get_user_by_email(&self.pool, &dto.email).await?;
 
         if existing_user.is_some() {
-            return Err(AppError::Conflict("Email already exists".to_string()))
+            return Err(AppError::Conflict("Email already exists".to_string()));
         }
 
         // 2. hash password

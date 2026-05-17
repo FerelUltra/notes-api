@@ -16,7 +16,7 @@ pub mod state;
 
 use handlers::{
     auth::{login, register},
-    notes::get_notes,
+    notes::{create_note, delete_note, get_note_by_id, get_notes, update_note},
     users::{delete_user, get_user_by_id, get_users, update_user},
 };
 
@@ -31,7 +31,11 @@ pub fn create_app(state: AppState) -> Router {
         )
         .route("/auth/login", post(login))
         .route("/auth/register", post(register))
-        .route("/notes", get(get_notes))
+        .route("/notes", get(get_notes).post(create_note))
+        .route(
+            "/notes/{id}",
+            get(get_note_by_id).put(update_note).delete(delete_note),
+        )
         .with_state(state)
         .layer(TraceLayer::new_for_http())
 }
