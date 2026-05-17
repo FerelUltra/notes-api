@@ -1,134 +1,111 @@
-use serde::{Deserialize, Serialize};
 use crate::errors::AppError;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-pub struct CreateUserRequest{
-	pub username: String,
-	pub email: String,
+pub struct CreateUserRequest {
+    pub username: String,
+    pub email: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct UpdateUserRequest{
-	pub username: String,
-	pub email: String,
+pub struct UpdateUserRequest {
+    pub username: String,
+    pub email: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
-	pub id: i64,
-	pub username: String, 
-	pub email: String,
-}
-
-
-#[derive(Debug, Deserialize)]
-pub struct CreateUserDto {
-	pub name: String,
+    pub id: i64,
+    pub username: String,
+    pub email: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdateUserDto{
-	pub name: String,
+pub struct UpdateUserDto {
+    pub name: String,
 }
 
 fn validate_name(name: &str) -> Result<(), AppError> {
-	let trimmed_name = name.trim();
+    let trimmed_name = name.trim();
 
-	if trimmed_name.is_empty(){
-		return Err(AppError::BadRequest("Name cannot be empty".to_string()));
-	}
+    if trimmed_name.is_empty() {
+        return Err(AppError::BadRequest("Name cannot be empty".to_string()));
+    }
 
-	if trimmed_name.len() > 100 {
-		return Err(AppError::BadRequest("Name is too long".to_string()));
-	}
+    if trimmed_name.len() > 100 {
+        return Err(AppError::BadRequest("Name is too long".to_string()));
+    }
 
-	Ok(())
-}
-
-impl CreateUserDto {
-	pub fn validate(&self) -> Result<(), AppError> {
-		validate_name(&self.name)
-	}
+    Ok(())
 }
 
 impl UpdateUserDto {
-	pub fn validate(&self) -> Result<(), AppError> {
-		validate_name(&self.name)
-	}
+    pub fn validate(&self) -> Result<(), AppError> {
+        validate_name(&self.name)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+    use super::*;
 
-	#[test]
-	fn create_user_dto_validate_should_fail_when_name_is_empty(){
-		let dto = CreateUserDto{
-			name: "".to_string(),
-		};
+    #[test]
+    fn update_user_dto_validate_should_fail_when_name_is_empty() {
+        let dto = UpdateUserDto {
+            name: "".to_string(),
+        };
 
-		let result = dto.validate();
+        let result = dto.validate();
 
-		assert!(result.is_err());
-	}
+        assert!(result.is_err());
+    }
 
-	#[test]
-	fn create_user_dto_validate_should_fail_when_name_is_only_spaces(){
-		let dto = CreateUserDto {
-			name: "     ".to_string(),
-		};
+    #[test]
+    fn update_user_dto_validate_should_fail_when_name_is_only_spaces() {
+        let dto = UpdateUserDto {
+            name: "     ".to_string(),
+        };
 
-		let result = dto.validate();
+        let result = dto.validate();
 
-		assert!(result.is_err());
-	}
+        assert!(result.is_err());
+    }
 
-	#[test]
-	fn create_user_dto_validate_should_pass_when_name_is_valid(){
-		let dto = CreateUserDto{
-			name: "Ferel".to_string(),
-		};
+    #[test]
+    fn update_user_dto_validate_should_pass_when_name_is_valid() {
+        let dto = UpdateUserDto {
+            name: "Ferel".to_string(),
+        };
 
-		let result = dto.validate();
+        let result = dto.validate();
 
-		assert!(result.is_ok());
-	}
+        assert!(result.is_ok());
+    }
 
-	#[test]
-	fn create_user_dto_validate_should_fail_when_name_is_too_long(){
-		let dto = CreateUserDto{
-			name: "a".repeat(101),
-		};
+    #[test]
+    fn update_user_dto_validate_should_fail_when_name_is_too_long() {
+        let dto = UpdateUserDto {
+            name: "a".repeat(101),
+        };
 
-		let result = dto.validate();
+        let result = dto.validate();
 
-		assert!(result.is_err());
-	}
+        assert!(result.is_err());
+    }
 
-	#[test]
-	fn create_user_dto_validate_should_return_bad_request_for_empty_name(){
-		let dto = CreateUserDto{
-			name: "".to_string(),
-		};
+    #[test]
+    fn update_user_dto_validate_should_return_bad_request_for_empty_name() {
+        let dto = UpdateUserDto {
+            name: "".to_string(),
+        };
 
-		let result = dto.validate();
+        let result = dto.validate();
 
-		match result {
-			Err(AppError::BadRequest(message)) =>{
-				assert_eq!(message, "Name cannot be empty");
-			}
-			_ => panic!("expected AppError::BadRequest") 
-		}
-	}
-
-	#[test]
-	fn update_user_dto_validate_should_pass_when_name_is_valid(){
-		let dto = UpdateUserDto{
-			name: "Alice".to_string(),
-		};
-
-		let result = dto.validate();
-
-		assert!(result.is_ok());
-	}
+        match result {
+            Err(AppError::BadRequest(message)) => {
+                assert_eq!(message, "Name cannot be empty");
+            }
+            _ => panic!("expected AppError::BadRequest"),
+        }
+    }
 }

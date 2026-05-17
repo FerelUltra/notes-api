@@ -1,15 +1,17 @@
 use sqlx::PgPool;
 
-use crate::{
-    dto::users::{CreateUserDto, UpdateUserDto},
-    errors::AppError,
-    models::users::User,
-};
+use crate::{dto::users::UpdateUserDto, errors::AppError, models::users::User};
+
+pub struct CreateUserDb {
+    pub name: String,
+    pub email: String,
+    pub password_hash: String,
+}
 
 pub async fn get_users(pool: &PgPool) -> Result<Vec<User>, AppError> {
     let users = sqlx::query_as::<_, User>(
         r#"
-		select id, name
+		select id, name, email, password_hash
 		from users
 		order by id
 		"#,
@@ -23,7 +25,7 @@ pub async fn get_users(pool: &PgPool) -> Result<Vec<User>, AppError> {
 pub async fn get_user_by_id(pool: &PgPool, id: i32) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
         r#"
-		select id, name
+		select id, name, email, password_hash
 		from users
 		where id = $1
 		"#,
@@ -39,62 +41,68 @@ pub async fn get_user_by_name(
     pool: &PgPool,
     name: &str,
 ) -> Result<Option<(User, String)>, AppError> {
-    let record = sqlx::query!(
+    let record = sqlx::query_as::<_, User>(
         r#"
-        SELECT id, name, password_hash
+        SELECT id, name, email, password_hash
         FROM users
         WHERE name = $1
         "#,
-        name
     )
+    .bind(name)
     .fetch_optional(pool)
     .await?;
 
-    let result = record.map(|r| {
-        let password_hash = r.password_hash.ok_or_else(||{
-            AppError::InternalServerError("User has no password hash".to_string())
-        })?;
-        Ok::<(User, String), AppError>((
-            User {
-                id: r.id,
-                name: r.name,
-            },
-            password_hash,
-        ))
-    })
-    .transpose()?;
+    let result = record
+        .map(|r| {
+            let password_hash = r.password_hash.ok_or_else(|| {
+                AppError::InternalServerError("User has no password hash".to_string())
+            })?;
+            Ok::<(User, String), AppError>((
+                User {
+                    id: r.id,
+                    name: r.name,
+                    email: r.email,
+                    password_hash: None,
+                },
+                password_hash,
+            ))
+        })
+        .transpose()?;
 
     Ok(result)
 }
 
-pub async fn create_user(pool: &PgPool, dto: CreateUserDto) -> Result<User, AppError> {
-    let name = dto.name.trim().to_string();
-
+pub async fn get_user_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
         r#"
-		insert into users (name)
-		values ($1)
-		returning id, name
-		"#,
+        SELECT id, name, email, password_hash
+        FROM users
+        WHERE email = $1
+        "#,
     )
-    .bind(name)
-    .fetch_one(pool)
+    .bind(email.trim().to_lowercase())
+    .fetch_optional(pool)
     .await?;
 
     Ok(user)
 }
 
-pub async fn create_user_with_password(pool: &PgPool, name: String, password_hash: String) -> Result<User, AppError> {
-    let user = sqlx::query_as!(
-        User,
+pub async fn create_user(pool: &PgPool, dto: CreateUserDb) -> Result<User, AppError> {
+    let name = dto.name.trim().to_string();
+    let email = dto.email.trim().to_lowercase();
+
+    let user = sqlx::query_as::<_, User>(
         r#"
-        INSERT INTO users (name, password_hash)
-        VALUES ($1, $2)
-        RETURNING id, name
-        "#,
-        name,
-        password_hash
-    ).fetch_one(pool).await?;
+		insert into users (name, email, password_hash)
+		values ($1, $2, $3)
+		returning id, name, email, password_hash
+		"#,
+    )
+    .bind(name)
+    .bind(email)
+    .bind(dto.password_hash)
+    .fetch_one(pool)
+    .await?;
 
     Ok(user)
 }
@@ -111,7 +119,7 @@ pub async fn update_user(
 		update users
 		set name = $1
 		where id = $2
-		returning id, name
+		returning id, name, email, password_hash
 		"#,
     )
     .bind(name)
@@ -141,11 +149,13 @@ mod tests {
     use super::*;
     use sqlx::postgres::PgPoolOptions;
 
-    async fn setup_test_db() -> PgPool {
+    async fn setup_test_db() -> Option<PgPool> {
         dotenvy::dotenv().ok();
 
-        let database_url =
-            std::env::var("TEST_DATABASE_URL").expect("TEST_DATABASE_URL must be set");
+        let Ok(database_url) = std::env::var("TEST_DATABASE_URL") else {
+            eprintln!("skipping DB test: TEST_DATABASE_URL is not set");
+            return None;
+        };
 
         let pool = PgPoolOptions::new()
             .connect(&database_url)
@@ -157,7 +167,7 @@ mod tests {
             .await
             .expect("failed to run migrations");
 
-        pool
+        Some(pool)
     }
 
     async fn clean_users_table(pool: &PgPool) {
@@ -169,28 +179,40 @@ mod tests {
 
     #[tokio::test]
     async fn create_user_should_insert_user_into_db() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
-        let dto = CreateUserDto {
-            name: "Ferel".to_string(),
-        };
-
-        let user = create_user(&pool, dto).await.expect("create_user failed");
+        let user = create_user(
+            &pool,
+            CreateUserDb {
+                name: "Ferel".to_string(),
+                email: "ferel@example.com".to_string(),
+                password_hash: "password-hash".to_string(),
+            },
+        )
+        .await
+        .expect("create_user failed");
 
         assert_eq!(user.id, 1);
         assert_eq!(user.name, "Ferel");
+        assert_eq!(user.email.as_deref(), Some("ferel@example.com"));
     }
 
     #[tokio::test]
     async fn get_user_by_id_should_return_user_when_user_exists() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
         let created = create_user(
             &pool,
-            CreateUserDto {
+            CreateUserDb {
                 name: "Alice".to_string(),
+                email: "alice@example.com".to_string(),
+                password_hash: "password-hash".to_string(),
             },
         )
         .await
@@ -209,7 +231,9 @@ mod tests {
 
     #[tokio::test]
     async fn get_user_by_id_should_return_none_when_user_does_not_exist() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
         let user = get_user_by_id(&pool, 999)
@@ -221,13 +245,17 @@ mod tests {
 
     #[tokio::test]
     async fn get_users_should_return_all_users() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
         create_user(
             &pool,
-            CreateUserDto {
+            CreateUserDb {
                 name: "Alice".to_string(),
+                email: "alice@example.com".to_string(),
+                password_hash: "password-hash".to_string(),
             },
         )
         .await
@@ -235,8 +263,10 @@ mod tests {
 
         create_user(
             &pool,
-            CreateUserDto {
+            CreateUserDb {
                 name: "Bob".to_string(),
+                email: "bob@example.com".to_string(),
+                password_hash: "password-hash".to_string(),
             },
         )
         .await
@@ -251,13 +281,17 @@ mod tests {
 
     #[tokio::test]
     async fn update_user_should_update_existing_user() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
         let created = create_user(
             &pool,
-            CreateUserDto {
+            CreateUserDb {
                 name: "Alice".to_string(),
+                email: "alice@example.com".to_string(),
+                password_hash: "password-hash".to_string(),
             },
         )
         .await
@@ -281,7 +315,9 @@ mod tests {
 
     #[tokio::test]
     async fn update_user_should_return_none_when_user_does_not_exist() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
         let updated = update_user(
@@ -299,13 +335,17 @@ mod tests {
 
     #[tokio::test]
     async fn delete_user_should_delete_existing_user() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
         let created = create_user(
             &pool,
-            CreateUserDto {
+            CreateUserDb {
                 name: "Delete me".to_string(),
+                email: "delete-me@example.com".to_string(),
+                password_hash: "password-hash".to_string(),
             },
         )
         .await
@@ -326,7 +366,9 @@ mod tests {
 
     #[tokio::test]
     async fn delete_user_should_return_false_when_user_does_not_exist() {
-        let pool = setup_test_db().await;
+        let Some(pool) = setup_test_db().await else {
+            return;
+        };
         clean_users_table(&pool).await;
 
         let deleted = delete_user(&pool, 999).await.expect("delete_user failed");

@@ -1,9 +1,11 @@
 use sqlx::PgPool;
 
 use crate::{
-    auth::{hash_password, verify_password}, db, dto::{
-        RegisterUserDto, users::{CreateUserDto, UpdateUserDto}, LoginUserDto
-    }, errors::AppError, models::users::User
+    auth::{hash_password, verify_password},
+    db,
+    dto::{users::UpdateUserDto, LoginUserDto, RegisterUserDto},
+    errors::AppError,
+    models::users::User,
 };
 
 #[derive(Clone)]
@@ -30,18 +32,17 @@ impl UserService {
         let password_hash = hash_password(&dto.password)?;
 
         // 3. save user
-        let user = db::users::create_user_with_password(
+        let user = db::users::create_user(
             &self.pool,
-            dto.name,
-            password_hash,
-        ).await?;
+            db::users::CreateUserDb {
+                name: dto.name,
+                email: dto.email,
+                password_hash,
+            },
+        )
+        .await?;
 
         Ok(user)
-    }
-
-    pub async fn create_user(&self, dto: CreateUserDto) -> Result<User, AppError> {
-        let created_user = db::users::create_user(&self.pool, dto).await?;
-        Ok(created_user)
     }
 
     pub async fn get_user_by_id(&self, user_id: i32) -> Result<User, AppError> {
@@ -74,20 +75,24 @@ impl UserService {
         Ok(deleted)
     }
 
-    pub async fn login_user(
-        &self,
-        dto: LoginUserDto,
-    ) -> Result<User, AppError> {
-        let record = db::users::get_user_by_name(&self.pool, &dto.name)
+    pub async fn login_user(&self, dto: LoginUserDto) -> Result<User, AppError> {
+        let user = db::users::get_user_by_email(&self.pool, &dto.email)
             .await?
-            .ok_or(AppError::Unauthorized("Invalid credentials".to_string()))?;
+            .ok_or(AppError::Unauthorized(
+                "Invalid email or password".to_string(),
+            ))?;
 
-        let (user, password_hash) = record;
+        let is_valid = verify_password(
+            &dto.password,
+            user.password_hash
+                .as_deref()
+                .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?,
+        )?;
 
-        let valid = verify_password(&dto.password, &password_hash)?;
-
-        if !valid{
-            return Err(AppError::Unauthorized("Invalid credentials".to_string()));
+        if !is_valid {
+            return Err(AppError::Unauthorized(
+                "Invalid email or password".to_string(),
+            ));
         }
 
         Ok(user)
