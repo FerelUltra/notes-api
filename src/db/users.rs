@@ -11,7 +11,7 @@ pub struct CreateUserDb {
 pub async fn get_users(pool: &PgPool) -> Result<Vec<User>, AppError> {
     let users = sqlx::query_as::<_, User>(
         r#"
-		select id, name, email, password_hash
+		select id, name, email, password_hash, token_version
 		from users
 		order by id
 		"#,
@@ -25,7 +25,7 @@ pub async fn get_users(pool: &PgPool) -> Result<Vec<User>, AppError> {
 pub async fn get_user_by_id(pool: &PgPool, id: i32) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
         r#"
-		select id, name, email, password_hash
+		select id, name, email, password_hash, token_version
 		from users
 		where id = $1
 		"#,
@@ -43,7 +43,7 @@ pub async fn get_user_by_name(
 ) -> Result<Option<(User, String)>, AppError> {
     let record = sqlx::query_as::<_, User>(
         r#"
-        SELECT id, name, email, password_hash
+        SELECT id, name, email, password_hash, token_version
         FROM users
         WHERE name = $1
         "#,
@@ -63,6 +63,7 @@ pub async fn get_user_by_name(
                     name: r.name,
                     email: r.email,
                     password_hash: None,
+                    token_version: r.token_version
                 },
                 password_hash,
             ))
@@ -75,7 +76,7 @@ pub async fn get_user_by_name(
 pub async fn get_user_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
         r#"
-        SELECT id, name, email, password_hash
+        SELECT id, name, email, password_hash, token_version
         FROM users
         WHERE email = $1
         "#,
@@ -95,7 +96,7 @@ pub async fn create_user(pool: &PgPool, dto: CreateUserDb) -> Result<User, AppEr
         r#"
 		insert into users (name, email, password_hash)
 		values ($1, $2, $3)
-		returning id, name, email, password_hash
+		returning id, name, email, password_hash, token_version
 		"#,
     )
     .bind(name)
@@ -119,7 +120,7 @@ pub async fn update_user(
 		update users
 		set name = $1
 		where id = $2
-		returning id, name, email, password_hash
+		returning id, name, email, password_hash, token_version
 		"#,
     )
     .bind(name)
@@ -138,6 +139,36 @@ pub async fn delete_user(pool: &PgPool, id: i32) -> Result<bool, AppError> {
 		"#,
     )
     .bind(id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn get_user_token_version(pool: &PgPool, user_id: i32) -> Result<Option<i32>, AppError> {
+    let token_version = sqlx::query_scalar::<_, i32> (
+        r#"
+        SELECT token_version
+        FROM users
+        WHERE id = $1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(token_version)
+}
+
+pub async fn increment_token_version(pool: &PgPool, user_id: i32) -> Result<bool, AppError> {
+    let result = sqlx::query(
+        r#"
+        UPDATE users
+        SET token_version = token_version + 1
+        WHERE id = $1
+        "#,
+    )
+    .bind(user_id)
     .execute(pool)
     .await?;
 

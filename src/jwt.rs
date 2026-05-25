@@ -11,9 +11,10 @@ use sha2::{Digest, Sha256};
 pub struct Claims {
     pub sub: i32,
     pub exp: usize,
+    pub token_version: i32,
 }
 
-pub fn generate_access_token(user_id: i32, jwt_secret: &str) -> Result<String, AppError> {
+pub fn generate_access_token(user_id: i32, jwt_secret: &str, token_version: i32) -> Result<String, AppError> {
     let expires_at = Utc::now()
         .checked_add_signed(Duration::minutes(60))
         .ok_or_else(|| {
@@ -23,6 +24,7 @@ pub fn generate_access_token(user_id: i32, jwt_secret: &str) -> Result<String, A
     let claims = Claims {
         sub: user_id,
         exp: expires_at.timestamp() as usize,
+        token_version
     };
 
     let token = encode(

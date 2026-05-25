@@ -67,3 +67,22 @@ pub async fn revoke_refresh_token(pool: &PgPool, token_hash: &str) -> Result<boo
 
     Ok(result.rows_affected() > 0)
 }
+
+pub async fn revoke_all_refresh_tokens_for_user(
+    pool: &PgPool,
+    user_id: i32,
+) -> Result<u64, AppError> {
+    let result = sqlx::query(
+        r#"
+        UPDATE refresh_tokens
+        SET revoked_at = NOW()
+        WHERE user_id = $1
+            AND revoked_at IS NULL
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected())
+}

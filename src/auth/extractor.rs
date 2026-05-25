@@ -4,7 +4,7 @@ use axum::{
 };
 use jsonwebtoken::{decode, DecodingKey, Validation};
 
-use crate::{errors::AppError, jwt::Claims, state::AppState};
+use crate::{db, errors::AppError, jwt::Claims, state::AppState};
 
 pub struct AuthUser {
     pub user_id: i32,
@@ -37,6 +37,14 @@ where
         )
         .map_err(|_| AppError::Unauthorized("Invalid token".to_string()))?;
 
+        let current_token_version =
+            db::users::get_user_token_version(&state.db, decoded.claims.sub)
+                .await?
+                .ok_or_else(|| AppError::Unauthorized("Invalid token".to_string()))?;
+
+        if decoded.claims.token_version != current_token_version {
+            return Err(AppError::Unauthorized("Invalid token".to_string()));
+        }
         Ok(AuthUser {
             user_id: decoded.claims.sub,
         })

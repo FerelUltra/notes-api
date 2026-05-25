@@ -8,4 +8,6 @@ pub struct User {
     #[serde(skip_serializing)]
     pub password_hash: Option<String>,
     pub email: Option<String>,
+    #[serde(skip_serializing)]
+    pub token_version: i32,
 }

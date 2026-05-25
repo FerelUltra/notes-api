@@ -7,16 +7,11 @@ use redis::AsyncCommands;
 use std::net::SocketAddr;
 
 use crate::{
-    db,
-    dto::{
-        auth::{LogoutDto, RefreshTokenDto},
-        AuthResponseDto, LoginUserDto, RegisterUserDto,
-    },
-    errors::AppError,
-    jwt::{
+    auth::extractor::AuthUser, db, dto::{
+        AuthResponseDto, LoginUserDto, RegisterUserDto, auth::{LogoutDto, RefreshTokenDto}
+    }, errors::AppError, jwt::{
         generate_access_token, generate_refresh_token, hash_refresh_token, refresh_token_expires_at,
-    },
-    state::AppState,
+    }, state::AppState
 };
 
 const REGISTER_RATE_LIMIT_MAX_REQUESTS: u64 = 5;
@@ -72,7 +67,7 @@ pub async fn register(
     dto.validate()?;
 
     let user = state.user_service.register_user(dto).await?;
-    let access_token = generate_access_token(user.id, &state.jwt_secret)?;
+    let access_token = generate_access_token(user.id, &state.jwt_secret, user.token_version)?;
 
     let refresh_token = generate_refresh_token();
     let refresh_token_hash = hash_refresh_token(&refresh_token);
@@ -101,7 +96,7 @@ pub async fn login(
     dto.validate()?;
     let user = state.user_service.login_user(dto).await?;
 
-    let access_token = generate_access_token(user.id, &state.jwt_secret)?;
+    let access_token = generate_access_token(user.id, &state.jwt_secret, user.token_version)?;
 
     let refresh_token = generate_refresh_token();
     let refresh_token_hash = hash_refresh_token(&refresh_token);
@@ -133,7 +128,8 @@ pub async fn refresh(
 
     db::refresh_tokens::revoke_refresh_token(&state.db, &old_token_hash).await?;
 
-    let access_token = generate_access_token(stored_token.user_id, &state.jwt_secret)?;
+    let token_version = db::users::get_user_token_version(&state.db, stored_token.user_id).await?.ok_or_else(|| AppError::Unauthorized("Invalid refresh token".to_string()))?;
+    let access_token = generate_access_token(stored_token.user_id, &state.jwt_secret, token_version)?;
 
     let refresh_token = generate_refresh_token();
     let refresh_token_hash = hash_refresh_token(&refresh_token);
@@ -160,6 +156,21 @@ pub async fn logout(
     let token_hash = hash_refresh_token(&dto.refresh_token);
 
     db::refresh_tokens::revoke_refresh_token(&state.db, &token_hash).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn logout_all(
+    AuthUser { user_id}: AuthUser,
+    State(state): State<AppState>,
+) -> Result<StatusCode, AppError> {
+    db::refresh_tokens::revoke_all_refresh_tokens_for_user(&state.db, user_id).await?;
+
+    let updated = db::users::increment_token_version(&state.db, user_id).await?;
+
+    if !updated{
+        return Err(AppError::Unauthorized("Invalid token".to_string()));
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -23,6 +23,8 @@ use handlers::{
 
 use state::AppState;
 
+use crate::handlers::auth::logout_all;
+
 pub fn create_app(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
@@ -40,6 +42,7 @@ pub fn create_app(state: AppState) -> Router {
         )
         .route("/auth/refresh", post(refresh))
         .route("/auth/logout", post(logout))
+        .route("/auth/logout-all", post(logout_all))
         .with_state(state)
         .layer(TraceLayer::new_for_http())
 }
