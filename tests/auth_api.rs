@@ -67,6 +67,23 @@ async fn register_user(app: axum::Router) -> Value {
     serde_json::from_slice(&body).unwrap()
 }
 
+async fn login_user(app: axum::Router) -> Value {
+    let request = Request::builder()
+        .uri("/auth/login")
+        .method("POST")
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"email":"alice@example.com","password":"secret123"}"#,
+        ))
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    serde_json::from_slice(&body).unwrap()
+}
+
 async fn refresh_token(app: axum::Router, refresh_token: &str) -> (StatusCode, Value) {
     let body = serde_json::json!({
         "refresh_token": refresh_token,
@@ -112,6 +129,21 @@ async fn register_should_return_access_and_refresh_tokens() {
     };
 
     let body = register_user(app).await;
+
+    assert!(body["access_token"].as_str().is_some());
+    assert!(body["refresh_token"].as_str().is_some());
+    assert_eq!(body["token"], "Bearer");
+}
+
+#[tokio::test]
+async fn login_should_return_access_and_refresh_tokens() {
+    let Some(app) = setup_test_app().await else {
+        return;
+    };
+
+    register_user(app.clone()).await;
+
+    let body = login_user(app).await;
 
     assert!(body["access_token"].as_str().is_some());
     assert!(body["refresh_token"].as_str().is_some());

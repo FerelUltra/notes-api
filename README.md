@@ -46,7 +46,7 @@ DATABASE_URL=postgres://postgres:1234@localhost:5432/app_db cargo sqlx migrate r
 Start the API:
 
 ```bash
-cargo run
+cargo run --bin notes_api
 ```
 
 The API runs on:
@@ -109,11 +109,12 @@ curl -i -X POST http://localhost:3000/auth/login \
   -d '{"email":"alice@example.com","password":"secret123"}'
 ```
 
-The auth response contains an access token:
+The auth response contains access and refresh tokens:
 
 ```json
 {
   "access_token": "...",
+  "refresh_token": "...",
   "token": "Bearer"
 }
 ```
@@ -122,6 +123,24 @@ Use it on protected routes:
 
 ```bash
 TOKEN="paste_access_token_here"
+```
+
+Refresh the access token:
+
+```bash
+curl -i -X POST http://localhost:3000/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token":"paste_refresh_token_here"}'
+```
+
+The refresh response returns a new access token and a new refresh token. The old refresh token is revoked after use.
+
+Logout:
+
+```bash
+curl -i -X POST http://localhost:3000/auth/logout \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token":"paste_refresh_token_here"}'
 ```
 
 Create a note:
@@ -171,6 +190,8 @@ Public:
 GET  /health
 POST /auth/register
 POST /auth/login
+POST /auth/refresh
+POST /auth/logout
 ```
 
 Protected:
