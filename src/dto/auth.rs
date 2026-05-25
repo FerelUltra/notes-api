@@ -17,7 +17,18 @@ pub struct LoginUserDto {
 #[derive(Debug, Serialize)]
 pub struct AuthResponseDto {
     pub access_token: String,
+    pub refresh_token: String,
     pub token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RefreshTokenDto {
+    pub refresh_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LogoutDto {
+    pub refresh_token: String,
 }
 
 const MAX_PASSWORD_LENGTH: usize = 128;
