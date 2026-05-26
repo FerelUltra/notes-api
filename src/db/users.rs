@@ -63,7 +63,7 @@ pub async fn get_user_by_name(
                     name: r.name,
                     email: r.email,
                     password_hash: None,
-                    token_version: r.token_version
+                    token_version: r.token_version,
                 },
                 password_hash,
             ))
@@ -146,7 +146,7 @@ pub async fn delete_user(pool: &PgPool, id: i32) -> Result<bool, AppError> {
 }
 
 pub async fn get_user_token_version(pool: &PgPool, user_id: i32) -> Result<Option<i32>, AppError> {
-    let token_version = sqlx::query_scalar::<_, i32> (
+    let token_version = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT token_version
         FROM users

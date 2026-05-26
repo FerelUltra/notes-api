@@ -266,7 +266,7 @@ async fn update_user_should_return_403_when_user_updates_another_user() {
 }
 
 #[tokio::test]
-async fn update_user_should_return_404_when_own_user_no_longer_exists() {
+async fn update_user_should_return_401_when_own_user_no_longer_exists() {
     let Some(app) = setup_test_app().await else {
         return;
     };
@@ -293,7 +293,7 @@ async fn update_user_should_return_404_when_own_user_no_longer_exists() {
 
     let updated_response = app.clone().oneshot(updated_request).await.unwrap();
 
-    assert_eq!(updated_response.status(), StatusCode::NOT_FOUND)
+    assert_eq!(updated_response.status(), StatusCode::UNAUTHORIZED)
 }
 
 #[tokio::test]
@@ -322,7 +322,7 @@ async fn delete_user_should_return_200_and_remove_user() {
         .unwrap();
 
     let get_response = app.clone().oneshot(get_request).await.unwrap();
-    assert_eq!(get_response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(get_response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -347,7 +347,7 @@ async fn delete_user_should_return_403_when_user_deletes_another_user() {
 }
 
 #[tokio::test]
-async fn delete_user_should_return_404_when_own_user_no_longer_exists() {
+async fn delete_user_should_return_401_when_own_user_no_longer_exists() {
     let Some(app) = setup_test_app().await else {
         return;
     };
@@ -372,5 +372,5 @@ async fn delete_user_should_return_404_when_own_user_no_longer_exists() {
         .unwrap();
 
     let delete_response = app.clone().oneshot(delete_request).await.unwrap();
-    assert_eq!(delete_response.status(), StatusCode::NOT_FOUND)
+    assert_eq!(delete_response.status(), StatusCode::UNAUTHORIZED)
 }

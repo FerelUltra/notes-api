@@ -122,6 +122,28 @@ async fn logout(app: axum::Router, refresh_token: &str) -> StatusCode {
     app.oneshot(request).await.unwrap().status()
 }
 
+async fn logout_all(app: axum::Router, access_token: &str) -> StatusCode {
+    let request = Request::builder()
+        .uri("/auth/logout-all")
+        .method("POST")
+        .header("authorization", format!("Bearer {}", access_token))
+        .body(Body::empty())
+        .unwrap();
+
+    app.oneshot(request).await.unwrap().status()
+}
+
+async fn get_user(app: axum::Router, access_token: &str) -> StatusCode {
+    let request = Request::builder()
+        .uri("/users/1")
+        .method("GET")
+        .header("authorization", format!("Bearer {}", access_token))
+        .body(Body::empty())
+        .unwrap();
+
+    app.oneshot(request).await.unwrap().status()
+}
+
 #[tokio::test]
 async fn register_should_return_access_and_refresh_tokens() {
     let Some(app) = setup_test_app().await else {
@@ -188,4 +210,33 @@ async fn logout_should_revoke_refresh_token() {
 
     let (status, _) = refresh_token(app, refresh_token_value).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn logout_all_should_revoke_refresh_tokens_and_access_tokens() {
+    let Some(app) = setup_test_app().await else {
+        return;
+    };
+
+    let register_body = register_user(app.clone()).await;
+    let access_token = register_body["access_token"].as_str().unwrap();
+    let refresh_token_value = register_body["refresh_token"].as_str().unwrap();
+
+    let status = get_user(app.clone(), access_token).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let status = logout_all(app.clone(), access_token).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    let status = get_user(app.clone(), access_token).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    let (status, _) = refresh_token(app.clone(), refresh_token_value).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    let login_body = login_user(app.clone()).await;
+    let new_access_token = login_body["access_token"].as_str().unwrap();
+
+    let status = get_user(app, new_access_token).await;
+    assert_eq!(status, StatusCode::OK);
 }
